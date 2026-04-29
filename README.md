@@ -37,6 +37,8 @@ python setup.py bdist_msi
 
 The MSI is written to `dist/`.
 
+GitHub Actions also builds the MSI automatically on pushes, pull requests, manual runs, and version tags. Tag pushes like `v1.0.1` attach the generated MSI to the matching GitHub release.
+
 ## Quick Actions
 
 - This PC
