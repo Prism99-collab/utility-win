@@ -16,6 +16,7 @@ DEFAULTS: dict[str, Any] = {
     "include_apps": True,
     "include_quick_actions": True,
     "include_recent_files": True,
+    "full_file_scan": False,
     "confirm_system_actions": True,
     "max_results": 8,
 }

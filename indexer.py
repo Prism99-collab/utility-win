@@ -186,6 +186,11 @@ def _user_search_roots() -> list[Path]:
     return [p for p in candidates if p.exists()]
 
 
+def _full_scan_roots() -> list[Path]:
+    home = Path.home()
+    return [home] if home.exists() else _user_search_roots()
+
+
 def _classify_name(name: str) -> tuple[str, str]:
     ext = Path(name).suffix.lower()
     if ext in _EXT_MAP:
@@ -306,11 +311,19 @@ def _scan_recent(limit: int = 120) -> list[Item]:
     return [item for _, item in entries[:limit]]
 
 
-def _scan_user_files(limit: int = 900, max_depth: int = 5) -> list[Item]:
+def _scan_user_files(
+    *,
+    full_scan: bool = False,
+    limit: int | None = None,
+    max_depth: int | None = None,
+) -> list[Item]:
+    limit = 5000 if limit is None and full_scan else limit or 900
+    max_depth = 8 if max_depth is None and full_scan else max_depth or 5
     items: list[Item] = []
     seen_paths: set[str] = set()
 
-    for root in _user_search_roots():
+    roots = _full_scan_roots() if full_scan else _user_search_roots()
+    for root in roots:
         stack: list[tuple[Path, int]] = [(root, 0)]
         while stack and len(items) < limit:
             current, depth = stack.pop()
@@ -349,6 +362,19 @@ def _skip_user_path(path: Path) -> bool:
     name = path.name
     lowered = name.lower()
     if lowered.startswith(("~$", ".")) or lowered in {"desktop.ini", "thumbs.db"}:
+        return True
+    if lowered in {
+        "appdata",
+        "application data",
+        "cookies",
+        "local settings",
+        "netcache",
+        "printhood",
+        "recent",
+        "sendto",
+        "start menu",
+        "templates",
+    }:
         return True
     if any(word in lowered for word in _RECENT_BLOCKED_WORDS):
         return True
@@ -421,11 +447,16 @@ class Index:
         *,
         aliases: dict[str, str],
         include_recent: bool,
+        full_file_scan: bool = False,
         include_apps: bool = True,
         include_actions: bool = True,
     ) -> None:
         self._apps = _scan_apps() if include_apps else []
-        self._recent = _merge_user_items(_scan_user_files(), _scan_recent()) if include_recent else []
+        self._recent = (
+            _merge_user_items(_scan_user_files(full_scan=full_file_scan), _scan_recent())
+            if include_recent
+            else []
+        )
         self._aliases = _alias_items(aliases)
         self._include_recent = include_recent
         self._include_apps = include_apps

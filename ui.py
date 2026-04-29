@@ -1153,6 +1153,11 @@ class SettingsDialog(QDialog):
         self._include_actions.setChecked(bool(settings.get("include_quick_actions", True)))
         self._include_recent = QCheckBox("Recent files", tab)
         self._include_recent.setChecked(bool(settings.get("include_recent_files", True)))
+        self._full_file_scan = QCheckBox("Full user-folder scan for more accurate file search", tab)
+        self._full_file_scan.setChecked(bool(settings.get("full_file_scan", False)))
+        self._full_file_scan.setToolTip(
+            "Scans your whole user profile instead of only common folders. Slower on large PCs."
+        )
 
         self._max_results = QSpinBox(tab)
         self._max_results.setRange(4, 12)
@@ -1162,10 +1167,11 @@ class SettingsDialog(QDialog):
         layout.addWidget(self._include_apps, 0, 1)
         layout.addWidget(self._include_actions, 1, 1)
         layout.addWidget(self._include_recent, 2, 1)
-        layout.addWidget(QLabel("Maximum results"), 3, 0)
-        layout.addWidget(self._max_results, 3, 1)
+        layout.addWidget(self._full_file_scan, 3, 1)
+        layout.addWidget(QLabel("Maximum results"), 4, 0)
+        layout.addWidget(self._max_results, 4, 1)
         layout.setColumnStretch(1, 1)
-        layout.setRowStretch(4, 1)
+        layout.setRowStretch(5, 1)
         return tab
 
     def _aliases_tab(self, aliases: dict[str, str]) -> QWidget:
@@ -1222,6 +1228,7 @@ class SettingsDialog(QDialog):
         self._result["include_apps"] = self._include_apps.isChecked()
         self._result["include_quick_actions"] = self._include_actions.isChecked()
         self._result["include_recent_files"] = self._include_recent.isChecked()
+        self._result["full_file_scan"] = self._full_file_scan.isChecked()
         self._result["confirm_system_actions"] = self._confirm_system_actions.isChecked()
         self._result["max_results"] = self._max_results.value()
         self.accept()

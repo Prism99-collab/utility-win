@@ -7,6 +7,7 @@ Utility Win is a premium Spotlight-style launcher for Windows. It lives in the s
 - Fast global hotkey launcher, defaulting to `Alt+Space`.
 - Focused search input on open, with clean dismissal back to the previous window.
 - Fuzzy search across Start Menu apps, quick actions, aliases, recent items, and common user folders.
+- Optional full user-folder scan for users who want broader file search coverage.
 - Smarter category detection for folders, PDFs, Word, Excel, PowerPoint, images, videos, audio, archives, code, and data files.
 - Real Windows shell icons for apps and files where possible.
 - Settings for hotkey, startup, search sources, max results, aliases, and safety confirmations.
@@ -60,6 +61,8 @@ Settings are stored at:
 ```text
 %APPDATA%\SpotlightLauncher\settings.json
 ```
+
+Enable **Full user-folder scan** in Settings > Search if you want Utility Win to search beyond the common Desktop, Downloads, Documents, Pictures, Videos, and Music folders. It improves coverage while still skipping noisy folders such as AppData, caches, temp folders, `.git`, and `node_modules`.
 
 ## License
 

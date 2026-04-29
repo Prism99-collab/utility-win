@@ -60,6 +60,7 @@ class Launcher:
         self._index.rebuild(
             aliases=self._settings.get("aliases", {}),
             include_recent=bool(self._settings.get("include_recent_files", True)),
+            full_file_scan=bool(self._settings.get("full_file_scan", False)),
             include_apps=bool(self._settings.get("include_apps", True)),
             include_actions=bool(self._settings.get("include_quick_actions", True)),
         )
