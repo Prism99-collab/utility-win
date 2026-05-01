@@ -193,6 +193,21 @@ QLabel#metaLabel {
     font-size: 10px;
     font-weight: 700;
 }
+QFrame#noResults {
+    background-color: rgba(12, 13, 21, 246);
+    border: none;
+}
+QLabel#noResultsTitle {
+    color: #e1e7f5;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 700;
+}
+QLabel#noResultsSubtitle {
+    color: #6f819c;
+    background: transparent;
+    font-size: 12px;
+}
 QDialog#settings {
     background-color: #0f1018;
     color: #e8eaf2;
@@ -208,6 +223,31 @@ QLabel#settingsTitle {
 QLabel#settingsSubtitle {
     color: #5a6880;
     font-size: 12px;
+}
+QTabWidget::pane {
+    background-color: #11131d;
+    border: 1px solid rgba(255, 255, 255, 14);
+    border-radius: 10px;
+    top: -1px;
+}
+QTabBar::tab {
+    background-color: transparent;
+    color: #6f819c;
+    padding: 9px 16px;
+    margin-right: 4px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    font-weight: 600;
+}
+QTabBar::tab:selected {
+    color: #e8eaf2;
+    background-color: #171a28;
+    border: 1px solid rgba(255, 255, 255, 14);
+    border-bottom-color: #171a28;
+}
+QTabBar::tab:hover:!selected {
+    color: #b8c8dc;
+    background-color: rgba(255, 255, 255, 5);
 }
 QTableWidget {
     background-color: #141521;
@@ -231,9 +271,42 @@ QLineEdit, QSpinBox {
     border-radius: 8px;
     padding: 7px 9px;
 }
+QComboBox {
+    background-color: #141521;
+    color: #e8eaf2;
+    border: 1px solid rgba(255, 255, 255, 18);
+    border-radius: 8px;
+    padding: 7px 28px 7px 9px;
+    min-height: 28px;
+}
+QComboBox:hover, QLineEdit:hover, QSpinBox:hover {
+    border: 1px solid rgba(255, 255, 255, 30);
+}
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+QComboBox QAbstractItemView {
+    background-color: #141521;
+    color: #e8eaf2;
+    border: 1px solid rgba(255, 255, 255, 18);
+    selection-background-color: rgba(91, 141, 238, 120);
+    outline: 0;
+}
 QCheckBox {
     color: #c0cade;
     spacing: 10px;
+}
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 28);
+    background-color: #141521;
+}
+QCheckBox::indicator:checked {
+    background-color: #5b8dee;
+    border: 1px solid rgba(120, 170, 255, 180);
 }
 QPushButton {
     background-color: #1e2032;
@@ -506,11 +579,12 @@ class ResultDelegate(QStyledItemDelegate):
 
         painter.setPen(Qt.PenStyle.NoPen)
         if selected:
-            painter.setBrush(QColor(45, 65, 115))
+            painter.setBrush(QColor(34, 49, 86))
             painter.drawRoundedRect(bg_rect, 11, 11)
-            glow = QColor(91, 141, 238, 36)
-            painter.setPen(QPen(glow, 2))
-            painter.drawRoundedRect(bg_rect.adjusted(-1, -1, 1, 1), 12, 12)
+            painter.setBrush(QColor(91, 141, 238, 16))
+            painter.drawRoundedRect(bg_rect.adjusted(1, 1, -1, -1), 10, 10)
+            painter.setPen(QPen(QColor(116, 162, 255, 58), 1))
+            painter.drawRoundedRect(bg_rect.adjusted(0, 0, -1, -1), 11, 11)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(91, 141, 238))
             painter.drawRoundedRect(QRect(bg_rect.x(), bg_rect.y() + 10, 3, bg_rect.height() - 20), 2, 2)
@@ -527,9 +601,9 @@ class ResultDelegate(QStyledItemDelegate):
             self.BADGE,
         )
         tint = QColor(accent)
-        tint.setAlpha(30 if selected else 22)
+        tint.setAlpha(38 if selected else 22)
         border = QColor(accent)
-        border.setAlpha(88)
+        border.setAlpha(120 if selected else 88)
         painter.setBrush(tint)
         painter.setPen(QPen(border, 1))
         painter.drawRoundedRect(badge_rect, 11, 11)
@@ -572,9 +646,11 @@ class ResultDelegate(QStyledItemDelegate):
         )
 
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(255, 255, 255, 14 if selected else 8))
+        chip_bg = QColor(accent) if selected else QColor(255, 255, 255)
+        chip_bg.setAlpha(34 if selected else 8)
+        painter.setBrush(chip_bg)
         painter.drawRoundedRect(chip_rect, 6, 6)
-        painter.setPen(QColor(200, 210, 230) if selected else QColor(140, 154, 176))
+        painter.setPen(accent.lighter(150) if selected else QColor(140, 154, 176))
         painter.setFont(chip_font)
         painter.drawText(chip_rect, Qt.AlignmentFlag.AlignCenter, chip_text)
         painter.restore()
@@ -751,6 +827,24 @@ class SearchBar(QWidget):
         self._list.itemClicked.connect(lambda _i: self._exec_selected())
         root.addWidget(self._list)
 
+        self._no_results = QFrame(self)
+        self._no_results.setObjectName("noResults")
+        no_results_layout = QVBoxLayout(self._no_results)
+        no_results_layout.setContentsMargins(34, 22, 34, 24)
+        no_results_layout.setSpacing(5)
+        no_results_title = QLabel("No matches", self._no_results)
+        no_results_title.setObjectName("noResultsTitle")
+        no_results_subtitle = QLabel(
+            "Try another app name, file type, folder, or alias.",
+            self._no_results,
+        )
+        no_results_subtitle.setObjectName("noResultsSubtitle")
+        no_results_layout.addWidget(no_results_title)
+        no_results_layout.addWidget(no_results_subtitle)
+        no_results_layout.addStretch(1)
+        self._no_results.setVisible(False)
+        root.addWidget(self._no_results)
+
         self._footer = QFrame(self)
         self._footer.setObjectName("footer")
         footer_layout = QHBoxLayout(self._footer)
@@ -876,13 +970,15 @@ class SearchBar(QWidget):
             self._suggestions_panel.setVisible(True)
             self._meta_row.setVisible(False)
             self._list.setVisible(False)
+            self._no_results.setVisible(False)
             self._list.setFixedHeight(0)
             self.adjustSize()
             return
 
         self._suggestions_panel.setVisible(False)
         self._meta_row.setVisible(True)
-        self._list.setVisible(True)
+        self._no_results.setVisible(not results)
+        self._list.setVisible(bool(results))
         self._list.clear()
         self._meta.setText(f"{len(results)} MATCHES" if results else "NO RESULTS")
         grouped_results = self._group_results(results)
@@ -909,7 +1005,8 @@ class SearchBar(QWidget):
         self._select_first_result()
         self._list.setUpdatesEnabled(True)
 
-        self._list.setFixedHeight(total_h)
+        self._list.setFixedHeight(total_h if results else 0)
+        self._no_results.setFixedHeight(112 if not results else 0)
         self.adjustSize()
 
     def _render_suggestions(self, suggestions: list[Item]) -> None:
