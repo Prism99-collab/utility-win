@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Any, Iterable, Literal
 
 ItemKind = Literal["app", "action", "recent", "alias"]
 
@@ -281,7 +282,9 @@ def _scan_apps() -> list[Item]:
 
 def _skip_app_shortcut(name: str) -> bool:
     lowered = name.lower().strip()
-    return lowered in _APP_BLOCKED_PHRASES
+    if lowered in _APP_BLOCKED_PHRASES:
+        return True
+    return lowered.startswith(("odbc data sources",))
 
 
 def _scan_recent(limit: int = 120) -> list[Item]:
@@ -441,16 +444,19 @@ class Index:
         self._items: list[Item] = []
         self._empty_items: list[Item] = []
         self._suggestions: list[Item] = []
+        self._usage_stats: dict[str, dict[str, Any]] = {}
 
     def rebuild(
         self,
         *,
         aliases: dict[str, str],
+        usage_stats: dict[str, Any] | None = None,
         include_recent: bool,
         full_file_scan: bool = False,
         include_apps: bool = True,
         include_actions: bool = True,
     ) -> None:
+        self.set_usage_stats(usage_stats or {})
         self._apps = _scan_apps() if include_apps else []
         self._recent = (
             _merge_user_items(_scan_user_files(full_scan=full_file_scan), _scan_recent())
@@ -480,6 +486,13 @@ class Index:
     def all_items(self) -> Iterable[Item]:
         yield from self._items
 
+    def set_usage_stats(self, usage_stats: dict[str, Any]) -> None:
+        normalized: dict[str, dict[str, Any]] = {}
+        for key, value in usage_stats.items():
+            if isinstance(key, str) and isinstance(value, dict):
+                normalized[key] = value
+        self._usage_stats = normalized
+
     def search(self, query: str, limit: int = 8) -> list[Item]:
         q = query.strip().lower()
         if not q:
@@ -490,6 +503,7 @@ class Index:
             score = _item_score(q, item)
             if score > 0:
                 score += _kind_bonus(item)
+                score += _usage_bonus(item, self._usage_stats)
                 scored.append((score, order, item))
         scored.sort(key=lambda s: (-s[0], _kind_rank(s[2]), s[2].title.lower()))
         return [item for _, _, item in scored[:limit]]
@@ -522,6 +536,23 @@ def _kind_rank(item: Item) -> int:
     return {"alias": 0, "app": 1, "action": 2, "recent": 3}.get(item.kind, 9)
 
 
+def _item_key(item: Item) -> str:
+    return f"{item.kind}:{item.payload.lower()}"
+
+
+def _usage_bonus(item: Item, usage_stats: dict[str, dict[str, Any]]) -> float:
+    stats = usage_stats.get(_item_key(item))
+    if not stats:
+        return 0.0
+    count = max(0, int(stats.get("count", 0)))
+    last_used = float(stats.get("last_used", 0) or 0)
+    bonus = min(80.0, count * 8.0)
+    if last_used:
+        age_days = max(0.0, (time.time() - last_used) / 86400.0)
+        bonus += max(0.0, 35.0 - age_days * 4.0)
+    return bonus
+
+
 def _item_score(query: str, item: Item) -> float:
     title = item.title.lower()
     subtitle = item.subtitle.lower()
@@ -538,6 +569,7 @@ def _item_score(query: str, item: Item) -> float:
         "folder": {"dir", "directory", "folder"},
     }
     score = _fuzzy_score(query, title)
+    score = max(score, _acronym_score(query, title))
     if query == category:
         score = max(score, 440.0)
     elif query in category_aliases.get(category, set()):
@@ -547,6 +579,48 @@ def _item_score(query: str, item: Item) -> float:
     if query in subtitle:
         score = max(score, 210.0)
     return score
+
+
+def _acronym_score(query: str, target: str) -> float:
+    compact_query = "".join(ch for ch in query.lower() if ch.isalnum())
+    if len(compact_query) < 2:
+        return 0.0
+    words = [word for word in _split_words(target) if word]
+    if not words:
+        return 0.0
+    acronym = "".join(word[0] for word in words if word[0].isalnum())
+    if not acronym:
+        return 0.0
+    if acronym.startswith(compact_query):
+        return 470.0 - len(target) * 0.1
+    if _is_subsequence(compact_query, acronym):
+        return 320.0 - len(target) * 0.1
+    return 0.0
+
+
+def _split_words(text: str) -> list[str]:
+    words: list[str] = []
+    current: list[str] = []
+    previous = ""
+    for ch in text:
+        if ch.isalnum():
+            if current and previous and previous.islower() and ch.isupper():
+                words.append("".join(current).lower())
+                current = [ch]
+            else:
+                current.append(ch)
+        elif current:
+            words.append("".join(current).lower())
+            current = []
+        previous = ch
+    if current:
+        words.append("".join(current).lower())
+    return words
+
+
+def _is_subsequence(query: str, target: str) -> bool:
+    iterator = iter(target)
+    return all(ch in iterator for ch in query)
 
 
 def _build_suggestions(

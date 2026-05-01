@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ctypes
 import sys
+import time
 import traceback
 import winreg
 from pathlib import Path
@@ -59,6 +60,7 @@ class Launcher:
     def _rebuild_index(self) -> None:
         self._index.rebuild(
             aliases=self._settings.get("aliases", {}),
+            usage_stats=self._settings.get("launch_stats", {}),
             include_recent=bool(self._settings.get("include_recent_files", True)),
             full_file_scan=bool(self._settings.get("full_file_scan", False)),
             include_apps=bool(self._settings.get("include_apps", True)),
@@ -83,6 +85,7 @@ class Launcher:
             if self._needs_confirmation(item) and not self._confirm_action(item):
                 return
             execute_item(item, self._settings.get("aliases", {}))
+            self._record_launch(item)
         except Exception:  # noqa: BLE001
             QMessageBox.warning(
                 None,
@@ -106,6 +109,27 @@ class Launcher:
                 self._restart_hotkey(new_hotkey)
             self._tray.set_hotkey_text(new_hotkey)
             self._rebuild_index()
+
+    def _record_launch(self, item: Item) -> None:
+        stats = dict(self._settings.get("launch_stats", {}))
+        key = _item_key(item)
+        entry = dict(stats.get(key, {}))
+        entry["count"] = int(entry.get("count", 0)) + 1
+        entry["last_used"] = time.time()
+        entry["title"] = item.title
+        entry["kind"] = item.kind
+        stats[key] = entry
+        if len(stats) > 300:
+            stats = dict(
+                sorted(
+                    stats.items(),
+                    key=lambda pair: float(pair[1].get("last_used", 0)),
+                    reverse=True,
+                )[:300]
+            )
+        self._settings["launch_stats"] = stats
+        settings_store.save(self._settings)
+        self._index.set_usage_stats(stats)
 
     # -- settings effects -----------------------------------------------------
 
@@ -192,6 +216,10 @@ def _set_launch_at_startup(enabled: bool) -> None:
                     pass
     except OSError:
         pass
+
+
+def _item_key(item: Item) -> str:
+    return f"{item.kind}:{item.payload.lower()}"
 
 
 def _set_app_user_model_id() -> None:

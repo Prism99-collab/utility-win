@@ -8,6 +8,8 @@ Utility Win is a premium Spotlight-style launcher for Windows. It lives in the s
 - Focused search input on open, with clean dismissal back to the previous window.
 - Fuzzy search across Start Menu apps, quick actions, aliases, recent items, and common user folders.
 - Optional full user-folder scan for users who want broader file search coverage.
+- Usage-aware ranking that learns locally from what you launch most.
+- Acronym/initial matching for faster queries like `fe` for File Explorer.
 - Smarter category detection for folders, PDFs, Word, Excel, PowerPoint, images, videos, audio, archives, code, and data files.
 - Real Windows shell icons for apps and files where possible.
 - Settings for hotkey, startup, search sources, max results, aliases, and safety confirmations.

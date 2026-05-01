@@ -11,6 +11,7 @@ CONFIG_FILE = CONFIG_DIR / "settings.json"
 
 DEFAULTS: dict[str, Any] = {
     "aliases": {},                 # name -> command string (run via cmd /c)
+    "launch_stats": {},            # item key -> usage metadata for local ranking
     "hotkey": "Alt+Space",
     "launch_at_startup": False,
     "include_apps": True,
